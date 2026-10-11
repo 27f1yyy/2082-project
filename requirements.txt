@@ -1,0 +1,10 @@
+# Versions matching the Windows Python 3.13 environment in the reviewed upload.
+fastapi==0.141.1
+uvicorn==0.53.0
+pydantic==2.13.5
+python-multipart==0.0.32
+numpy==2.5.3
+pandas==3.0.6
+rasterio==1.5.1
+pyomo==6.10.1
+gurobipy==13.0.3

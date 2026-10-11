@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Conservation Planning Tool</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="topbar">
+        <div>
+            <h1>Conservation Planning Tool</h1>
+            <p>Interactive spatial conservation prioritisation for Victoria</p>
+        </div>
+
+        <div class="location-badge">
+            Victoria, Australia
+        </div>
+    </header>
+
+
+    <main class="app-layout">
+
+        <!-- LEFT PANEL -->
+        <aside class="sidebar">
+
+            <section class="panel-section">
+
+                <div class="section-heading">
+                    <span class="step">1</span>
+
+                    <div>
+                        <h2>Planning parameters</h2>
+                        <p>Configure the conservation scenario.</p>
+                    </div>
+                </div>
+
+
+                <div class="control-group">
+                    <label for="formulation">Optimisation problem</label>
+                    <select id="formulation" name="formulation" aria-describedby="formulationHelp">
+                        <option value="min_shortfall">Minimum Shortfall (budget-constrained)</option>
+                        <option value="min_set">Minimum Set (cost-minimising)</option>
+                    </select>
+                    <p id="formulationHelp" class="helper-text">
+                        Minimise unmet conservation targets within a fixed budget.
+                    </p>
+                </div>
+
+                <div class="control-group">
+
+                    <div class="control-label">
+                        <label for="target">Conservation target</label>
+
+                        <span id="targetValue" class="value-badge">
+                            30%
+                        </span>
+                    </div>
+
+                    <input
+                        id="target"
+                        type="range"
+                        min="1"
+                        max="100"
+                        value="30"
+                    >
+
+                    <div class="range-labels">
+                        <span>1%</span>
+                        <span>100%</span>
+                    </div>
+
+                </div>
+
+
+                <div class="control-group" id="budgetGroup">
+
+                    <label for="budget">
+                        Available budget
+                    </label>
+
+                    <div class="budget-input">
+                        <span aria-hidden="true">Cost units</span>
+
+                        <input
+                            id="budget"
+                            type="number"
+                            min="1"
+                            value="16255"
+                        >
+                    </div>
+
+                    <p class="helper-text">
+                        Maximum total opportunity cost (not Australian dollars).
+                    </p>
+
+                </div>
+
+
+                <!-- Species selection (GET /species) -->
+                <div class="control-group species-control">
+                    <div class="control-label">
+                        <label for="speciesSearch">Species selection</label>
+                        <span id="speciesCount" class="value-badge" aria-live="polite">Loading...</span>
+                    </div>
+                    <p class="helper-text species-help">
+                        Select the species included in this optimisation. All species are selected by default.
+                    </p>
+                    <input
+                        id="speciesSearch"
+                        class="species-search"
+                        type="search"
+                        autocomplete="off"
+                        placeholder="Search species name..."
+                        aria-label="Search available species"
+                        disabled
+                    >
+                    <div class="species-actions">
+                        <button id="selectAllSpecies" class="small-button" type="button" disabled>Select All</button>
+                        <button id="clearAllSpecies" class="small-button" type="button" disabled>Clear All</button>
+                    </div>
+                    <div id="speciesList" class="species-list" role="group" aria-label="Available species">
+                        <p class="species-empty">Loading available species...</p>
+                    </div>
+                    <p id="speciesListInfo" class="helper-text" aria-live="polite"></p>
+                    <p id="speciesStatus" class="species-status" role="status"></p>
+                    <button id="retrySpecies" class="small-button" type="button" hidden>Retry loading species</button>
+                </div>
+
+                <!-- Upload new one-band GeoTIFF compatible with Victoria's grid. -->
+                <details class="upload-panel" id="uploadPanel">
+                    <summary>Add new species (GeoTIFF)</summary>
+                    <form id="uploadSpeciesForm" class="upload-form">
+                        <p class="helper-text">
+                            Upload a single-band .tif/.tiff aligned to the Victoria planning grid.
+                            Newly added species will be selected automatically.
+                        </p>
+                        <label for="newSpeciesName">New species name</label>
+                        <input id="newSpeciesName" name="name" type="text"
+                               minlength="1" maxlength="100" required
+                               placeholder="e.g. My new species" autocomplete="off">
+                        <label for="newSpeciesFile">Species distribution raster</label>
+                        <input id="newSpeciesFile" name="file" type="file"
+                               accept=".tif,.tiff,image/tiff" required>
+                        <p class="helper-text">
+                            GeoTIFF only, one band, up to 50 MiB. Must match the original cost raster
+                            in CRS, pixel size, shape and alignment.
+                        </p>
+                        <button id="uploadSpeciesButton" class="upload-button" type="submit">
+                            Upload Species
+                        </button>
+                        <p id="uploadSpeciesStatus" class="upload-status" role="status" aria-live="polite"></p>
+                    </form>
+                </details>
+
+                <button id="runButton" class="run-button">
+                    Run Optimization
+                </button>
+
+                <div id="status" class="status"></div>
+
+            </section>
+
+
+            <!-- RESULTS -->
+            <section class="panel-section results-section">
+
+                <div class="section-heading">
+                    <span class="step">2</span>
+
+                    <div>
+                        <h2>Results</h2>
+                        <p id="resultsDescription">Summary of the current solution.</p>
+                    </div>
+                </div>
+
+
+                <div id="results" class="results-placeholder">
+                    Run an optimization to view results.
+                </div>
+
+            </section>
+
+            <!-- Comparison of the two most recent successful optimisation runs. -->
+            <section class="panel-section comparison-section">
+                <div class="section-heading">
+                    <span class="step">3</span>
+                    <div>
+                        <h2>Results comparison</h2>
+                        <p>Compare your last two successful scenarios.</p>
+                    </div>
+                </div>
+                <div id="comparison" aria-live="polite" class="comparison-placeholder">
+                    Run two optimisations to compare their results.
+                </div>
+                <!-- Live bar charts, shown after two successful runs. -->
+                <div id="comparisonCharts" class="comparison-charts" aria-label="Visual comparison of scenarios" hidden></div>
+                <button id="clearComparison" class="small-button comparison-clear" type="button" disabled>
+                    Clear comparison
+                </button>
+                <p class="helper-text">Results are kept in this browser tab until you refresh or clear them. The map shows the latest run.</p>
+            </section>
+
+        </aside>
+
+
+        <!-- MAP -->
+        <section class="map-panel">
+
+            <div class="map-header">
+
+                <div>
+                    <h2>Spatial solution</h2>
+                    <p>
+                        Selected planning units across Victoria
+                    </p>
+                </div>
+
+                <div class="legend">
+                    <span class="legend-box"></span>
+                    Selected planning unit
+                </div>
+
+            </div>
+
+            <div id="map"></div>
+
+        </section>
+
+    </main>
+
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>

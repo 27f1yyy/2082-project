@@ -1,0 +1,18 @@
+# Local Python environments and bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# User-imported raster data and uploads registry; not source code
+backend/uploaded_species/
+
+# Local environment or credentials
+.env
+.env.*
+*.lic
+
+# Testing scratch data
+*_test_species*.tif
+test_species_aligned.tif
